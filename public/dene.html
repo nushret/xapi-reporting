@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>xAPI Test</title>
+</head>
+<body>
+    <button id="sendStatement">Send Statement</button>
+    
+    <script>
+    document.getElementById('sendStatement').addEventListener('click', function() {
+        var statement = {
+            actor: {
+                name: "Test User",
+                mbox: "mailto:test@example.com"
+            },
+            verb: {
+                id: "http://adlnet.gov/expapi/verbs/completed",
+                display: {"en-US": "completed"}
+            },
+            object: {
+                id: "urn:test:simple-activity",
+                definition: {
+                    name: {"en-US": "Simple Test Activity"}
+                }
+            }
+        };
+        
+        fetch('http://xapi-reporting.local/api/statements', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic ' + btoa('xapi_user:xapi_password')
+            },
+            body: JSON.stringify(statement)
+        })
+        .then(response => response.json())
+        .then(data => console.log('Success:', data))
+        .catch(error => console.error('Error:', error));
+    });
+    </script>
+</body>
+</html>
