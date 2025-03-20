@@ -78,84 +78,101 @@ class ContentController extends Controller
         }
     }
     
+    
     private function parseTinCanXml($extractPath, $contentPath)
-    {
-        // Önce tincan.xml dosyasını bul
-        $tincanXmlPath = null;
-        
-        // Ana dizinde ara
-        if (file_exists($extractPath . '/tincan.xml')) {
-            $tincanXmlPath = $extractPath . '/tincan.xml';
-        } else {
-            // Alt dizinlerde ara
-            $directories = glob($extractPath . '/*', GLOB_ONLYDIR);
-            foreach ($directories as $dir) {
-                if (file_exists($dir . '/tincan.xml')) {
-                    $tincanXmlPath = $dir . '/tincan.xml';
-                    break;
-                }
-            }
-        }
-        
-        if (!$tincanXmlPath) {
-            Log::warning('tincan.xml dosyası bulunamadı: ' . $extractPath);
-            return;
-        }
-        
-        // tincan.xml dosyasını analiz et
-        $xml = simplexml_load_file($tincanXmlPath);
-        
-        if (!$xml) {
-            Log::warning('tincan.xml dosyası geçerli bir XML değil: ' . $tincanXmlPath);
-            return;
-        }
-        
-        // Kurs aktivitesini bul (launch özelliği olan)
-        $launchActivity = null;
-        $launchUrl = null;
-        
-        foreach ($xml->activities->activity as $activity) {
-            $activityId = (string)$activity['id'];
-            $activityType = (string)$activity['type'];
-            $name = (string)$activity->name;
-            $description = (string)$activity->description;
-            
-            // Launch özelliği varsa kaydet
-            if (isset($activity->launch)) {
-                $launchUrl = (string)$activity->launch;
-                $launchActivity = $activity;
-            }
-            
-            // Aktiviteyi veritabanına kaydet
-            Activity::updateOrCreate(
-                ['activity_id' => $activityId],
-                [
-                    'name' => $name ?: basename($contentPath),
-                    'description' => $description,
-                    'type' => $activityType,
-                    'content_path' => basename($contentPath),
-                    'launch_url' => isset($activity->launch) ? (string)$activity->launch : null
-                ]
-            );
-        }
-        
-        // Eğer launch özelliği olan bir aktivite bulunamadıysa, ilk aktiviteyi kullan
-        if (!$launchActivity && isset($xml->activities->activity[0])) {
-            $launchActivity = $xml->activities->activity[0];
-            $activityId = (string)$launchActivity['id'];
-            
-            // index_lms.html veya story.html dosyasını varsayılan olarak kullan
-            if (file_exists($extractPath . '/index_lms.html')) {
-                $launchUrl = 'index_lms.html';
-            } elseif (file_exists($extractPath . '/story.html')) {
-                $launchUrl = 'story.html';
-            }
-            
-            if ($launchUrl) {
-                Activity::where('activity_id', $activityId)->update(['launch_url' => $launchUrl]);
+{
+    // Önce tincan.xml dosyasını bul
+    $tincanXmlPath = null;
+    
+    // Ana dizinde ara
+    if (file_exists($extractPath . '/tincan.xml')) {
+        $tincanXmlPath = $extractPath . '/tincan.xml';
+    } else {
+        // Alt dizinlerde ara
+        $directories = glob($extractPath . '/*', GLOB_ONLYDIR);
+        foreach ($directories as $dir) {
+            if (file_exists($dir . '/tincan.xml')) {
+                $tincanXmlPath = $dir . '/tincan.xml';
+                break;
             }
         }
     }
+    
+    if (!$tincanXmlPath) {
+        Log::warning('tincan.xml dosyası bulunamadı: ' . $extractPath);
+        return;
+    }
+    
+    // tincan.xml dosyasını analiz et
+    $xml = simplexml_load_file($tincanXmlPath);
+    
+    if (!$xml) {
+        Log::warning('tincan.xml dosyası geçerli bir XML değil: ' . $tincanXmlPath);
+        return;
+    }
+    
+    // Kurs aktivitesini bul (launch özelliği olan)
+    $launchActivity = null;
+    $launchUrl = null;
+    $contentName = basename($contentPath); // Varsayılan olarak içerik yolunu kullan
+    
+    foreach ($xml->activities->activity as $activity) {
+        $activityId = (string)$activity['id'];
+        $activityType = (string)$activity['type'];
+        $name = (string)$activity->name;
+        $description = (string)$activity->description;
+        
+        // İçerik adını al (ilk aktivite veya launch özelliği olan aktivite)
+        if (empty($contentName) || isset($activity->launch)) {
+            $contentName = $name ?: basename($contentPath);
+        }
+        
+        // Launch özelliği varsa kaydet
+        if (isset($activity->launch)) {
+            $launchUrl = (string)$activity->launch;
+            $launchActivity = $activity;
+        }
+        
+        // Aktiviteyi veritabanına kaydet
+        Activity::updateOrCreate(
+            ['activity_id' => $activityId],
+            [
+                'name' => $name ?: $contentName,
+                'description' => $description,
+                'type' => $activityType,
+                'content_path' => basename($contentPath),
+                'launch_url' => isset($activity->launch) ? (string)$activity->launch : null
+            ]
+        );
+    }
+    
+    // İçerik adını Content modeline de kaydet
+    Content::updateOrCreate(
+        ['path' => basename($contentPath)],
+        [
+            'name' => $contentName,
+            'description' => $description ?? null
+        ]
+    );
+    
+    // Eğer launch özelliği olan bir aktivite bulunamadıysa, ilk aktiviteyi kullan
+    if (!$launchActivity && isset($xml->activities->activity[0])) {
+        $launchActivity = $xml->activities->activity[0];
+        $activityId = (string)$launchActivity['id'];
+        
+        // index_lms.html veya story.html dosyasını varsayılan olarak kullan
+        if (file_exists($extractPath . '/index_lms.html')) {
+            $launchUrl = 'index_lms.html';
+        } elseif (file_exists($extractPath . '/story.html')) {
+            $launchUrl = 'story.html';
+        }
+        
+        if ($launchUrl) {
+            Activity::where('activity_id', $activityId)->update(['launch_url' => $launchUrl]);
+        }
+    }
+}
+
     
    
 

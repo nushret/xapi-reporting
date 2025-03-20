@@ -65,6 +65,7 @@
                         <a href="{{ route('user.content.launch', $content->path) }}" class="btn btn-primary mt-auto">
                             <i class="bi bi-play-fill"></i> Başlat
                         </a>
+
                     </div>
                 </div>
             </div>

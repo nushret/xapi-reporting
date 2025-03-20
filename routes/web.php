@@ -23,18 +23,21 @@ Route::middleware('admin')->prefix('admin')->group(function () {
     Route::get('/users/{id}/edit', [AdminController::class, 'editUser'])->name('admin.users.edit');
     Route::put('/users/{id}', [AdminController::class, 'updateUser'])->name('admin.users.update');
     Route::delete('/users/{id}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
-    Route::get('/users', [AdminController::class, 'listUsers'])->name('admin.users.index'); // Bu satırı ekleyin
+    Route::get('/users', [AdminController::class, 'listUsers'])->name('admin.users.index');
     
     // İçerik yönetimi rotaları
     Route::get('/content', [ContentController::class, 'index'])->name('content.index');
     Route::post('/content/upload', [ContentController::class, 'upload'])->name('content.upload');
     Route::get('/content/{id}', [ContentController::class, 'show'])->name('content.show');
-    Route::get('/content/{id}/launch', [ContentController::class, 'launch'])->name('content.launch'); // Bu rotayı ekleyin
     
     // xAPI raporlama rotaları
-    Route::get('/reports', [XapiController::class, 'dashboard'])->name('dashboard.reports');
+    Route::get('/reports', [XapiController::class, 'usersReport'])->name('dashboard.reports');
+    Route::get('/reports/activities', [XapiController::class, 'activitiesReport'])->name('dashboard.activities');
+    Route::get('/reports/user/{userId}', [XapiController::class, 'userDetails'])->name('user.details');
     Route::get('/activity/{id}', [XapiController::class, 'activityDetails'])->name('activity.details');
-    Route::get('/activity/{activityId}/user/{userId}', [XapiController::class, 'userActivityDetails'])->name('user.activity.details');
+    
+    // Kullanıcı-aktivite detayları için tek bir rota
+    Route::get('/reports/user/{userId}/activity/{activityId}', [XapiController::class, 'userActivityDetails'])->name('user.activity.details');
 });
 
 // Kullanıcı rotaları
